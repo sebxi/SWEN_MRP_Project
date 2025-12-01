@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{7A6AB4AA-359A-4202-9037-0143A67933CF}|SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj|c:\\users\\ander\\source\\repos\\swen_project\\swen_mrp_project\\swen_mrp_anderseka\\swen_mrp_anderseka\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7A6AB4AA-359A-4202-9037-0143A67933CF}|SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj|solutionrelative:swen_mrp_anderseka\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\Program.cs",
+              "RelativeDocumentMoniker": "SWEN_MRP_Anderseka\\Program.cs",
+              "ToolTip": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\Program.cs",
+              "RelativeToolTip": "SWEN_MRP_Anderseka\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-01T09:30:14.454Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
