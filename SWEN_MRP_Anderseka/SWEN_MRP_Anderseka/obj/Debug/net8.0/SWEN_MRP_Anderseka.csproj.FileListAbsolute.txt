@@ -1,0 +1,15 @@
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\bin\Debug\net8.0\SWEN_MRP_Anderseka.exe
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\bin\Debug\net8.0\SWEN_MRP_Anderseka.deps.json
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\bin\Debug\net8.0\SWEN_MRP_Anderseka.runtimeconfig.json
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\bin\Debug\net8.0\SWEN_MRP_Anderseka.dll
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\bin\Debug\net8.0\SWEN_MRP_Anderseka.pdb
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.AssemblyInfoInputs.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.AssemblyInfo.cs
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.csproj.CoreCompileInputs.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.sourcelink.json
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.dll
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\refint\SWEN_MRP_Anderseka.dll
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.pdb
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\SWEN_MRP_Anderseka.genruntimeconfig.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\SWEN_MRP_Anderseka\obj\Debug\net8.0\ref\SWEN_MRP_Anderseka.dll

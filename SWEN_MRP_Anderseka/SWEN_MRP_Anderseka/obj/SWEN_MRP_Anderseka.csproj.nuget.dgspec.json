@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj": {}
+    "C:\\Users\\ander\\source\\repos\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj": {
+    "C:\\Users\\ander\\source\\repos\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj",
+        "projectUniqueName": "C:\\Users\\ander\\source\\repos\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj",
         "projectName": "SWEN_MRP_Anderseka",
-        "projectPath": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj",
+        "projectPath": "C:\\Users\\ander\\source\\repos\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka.csproj",
         "packagesPath": "C:\\Users\\ander\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ander\\source\\repos\\SWEN_Project\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\obj\\",
+        "outputPath": "C:\\Users\\ander\\source\\repos\\SWEN_MRP_Project\\SWEN_MRP_Anderseka\\SWEN_MRP_Anderseka\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
