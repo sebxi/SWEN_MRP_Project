@@ -1,4 +1,5 @@
 ﻿using MyMediaList.Server;
+using MyMediaList.Handlers;
 
 namespace MyMediaList
 {
@@ -8,11 +9,14 @@ namespace MyMediaList
         {
             using HttpRestServer svr = new();
             
+            // log incoming requests
             svr.RequestReceived += (sender, evt) =>
             {
                 Console.WriteLine($"Incoming request: {evt.Context.Request.HttpMethod} {evt.Context.Request.Url}");
-                // keine Antwort senden, Server liefert automatisch 404
             };
+
+            // route requests to available handlers
+            svr.RequestReceived += Handler.HandleEvent;
 
             Console.WriteLine("Starting server on http://localhost:8080");
             svr.Run();

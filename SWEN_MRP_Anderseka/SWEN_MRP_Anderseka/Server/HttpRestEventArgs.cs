@@ -1,100 +1,123 @@
-using System;
-using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
-using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
+using static System.Collections.Specialized.BitVector32;
 
-namespace MyMediaList.Server;
-
-/// <summary>
-/// Event args for the HttpRestServer.RequestReceived event.
-/// Encapsulates the HttpListenerContext and offers a convenient Respond(...) method.
-/// </summary>
-public sealed class HttpRestEventArgs : EventArgs
+namespace MyMediaList.Server
 {
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // private members                                                                                                  //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // constructors                                                                                                     //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>Creates a new instance for the given context.</summary>
-    public HttpRestEventArgs(HttpListenerContext context)
+    public class HttpRestEventArgs : EventArgs
     {
-        Context = context ?? throw new ArgumentNullException(nameof(context));
-    }
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // constructors                                                                                                     //
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // public properties                                                                                                //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>Gets the underlying HttpListenerContext.</summary>
-    public HttpListenerContext Context { get; }
-
-    /// <summary>Gets a value indicating whether a response has already been sent for this request.</summary>
-    public bool Responded { get; private set; }
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // public methods                                                                                                   //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>
-    /// Sends a JSON response with the specified status code and payload object.
-    /// If payload is null, an empty body is sent.
-    /// </summary>
-    /// <param name="status">HTTP status code to send.</param>
-    /// <param name="payload">An object that will be serialized to JSON and written to the response body. May be null.</param>
-    public void Respond(HttpStatusCode status, object? payload = null)
-    {
-        if (Responded) return;
-
-        try
+        /// <summary>Creates a new instance of this class.</summary>
+        /// <param name="context">HTTP listener context.</param>
+        public HttpRestEventArgs(HttpListenerContext context)
         {
-            var resp = Context.Response;
-            resp.StatusCode = (int)status;
-            resp.ContentType = "application/json; charset=utf-8";
+            Context = context;
 
-            if (payload != null)
+            Method = HttpMethod.Parse(context.Request.HttpMethod);
+            Path = context.Request.Url?.AbsolutePath ?? string.Empty;
+
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine($"Received: {Method} {Path}");
+
+            if (context.Request.HasEntityBody)
             {
-                string json = JsonSerializer.Serialize(payload, _jsonOptions);
-                byte[] bytes = Encoding.UTF8.GetBytes(json);
-                resp.ContentLength64 = bytes.Length;
-                using var output = resp.OutputStream;
-                output.Write(bytes, 0, bytes.Length);
+                using Stream input = context.Request.InputStream;
+                using StreamReader re = new(input, context.Request.ContentEncoding);
+                Body = re.ReadToEnd();
+                Content = JsonNode.Parse(Body)?.AsObject() ?? new JsonObject();
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine(Body);
             }
             else
             {
-                resp.ContentLength64 = 0;
-                // ensure OutputStream is closed so client receives response
-                resp.OutputStream.Close();
+                Body = string.Empty;
+                Content = new JsonObject();
             }
         }
-        catch
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // public properties                                                                                                //
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>Gets the underlying HTTP listener context object.</summary>
+        public HttpListenerContext Context { get; }
+
+
+        /// <summary>Gets the HTTP method for the request.</summary>
+        public HttpMethod Method { get; }
+
+
+        /// <summary>Gets the path for the request.</summary>
+        public string Path { get; }
+
+
+        /// <summary>Gets the request body.</summary>
+        public string Body { get; }
+
+
+        /// <summary>Gets the request JSON content.</summary>
+        public JsonObject Content { get; }
+
+
+        /// <summary>Gets the session from the request.</summary>
+        public System.Session? Session
         {
-            // swallow any exceptions during response writing - we cannot do more here
+            get
+            {
+                string token = Context.Request.Headers["Authorization"] ?? string.Empty;
+                if (token.ToLower().StartsWith("bearer "))
+                {
+                    token = token[7..].Trim();
+                }
+                else { return null; }
+
+                return System.Session.Get(token);
+            }
         }
-        finally
+
+
+        /// <summary>Gets or sets if the request has been responded to.</summary>
+        public bool Responded
         {
+            get; set;
+        } = false;
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // public methods                                                                                                   //
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /// <summary>Sends a response to the request.</summary>
+        /// <param name="statusCode">HTTP status code.</param>
+        /// <param name="content">Response message JSON content.</param>
+        public void Respond(HttpStatusCode statusCode, JsonObject? content)
+        {
+            HttpListenerResponse response = Context.Response;
+            response.StatusCode = (int)statusCode;
+            string rstr = content?.ToString() ?? string.Empty;
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Responding: {statusCode}: {rstr}\n\n");
+
+            byte[] buf = Encoding.UTF8.GetBytes(rstr);
+            response.ContentLength64 = buf.Length;
+            response.ContentType = "application/json; charset=UTF-8";
+
+            using Stream output = response.OutputStream;
+            output.Write(buf, 0, buf.Length);
+            output.Close();
+
             Responded = true;
         }
-    }
-
-
-    /// <summary>
-    /// Reads the request body as UTF-8 text asynchronously.
-    /// Useful for handlers that need to deserialize JSON from the client.
-    /// </summary>
-    /// <returns>Request body as string (may be empty).</returns>
-    public async System.Threading.Tasks.Task<string> ReadRequestBodyAsync()
-    {
-        using var sr = new StreamReader(Context.Request.InputStream, Context.Request.ContentEncoding);
-        return await sr.ReadToEndAsync().ConfigureAwait(false);
     }
 }

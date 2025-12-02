@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SWEN_MRP_Anderseka")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1092c6338d544899431e9fa2af8c424af847a2ad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+deb322c95b22c4d5bf3548f1d0fb6c5890a11ea8")]
 [assembly: System.Reflection.AssemblyProductAttribute("SWEN_MRP_Anderseka")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SWEN_MRP_Anderseka")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
