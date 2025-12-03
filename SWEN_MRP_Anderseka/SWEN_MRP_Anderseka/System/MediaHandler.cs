@@ -36,9 +36,20 @@ public sealed class MediaHandler : Handler, IHandler
                 }
                 else if (e.Method == HttpMethod.Post)
                 {
-                    // create - allow without token; use provided createdBy or 'anonymous'
+                    // create - REQUIRE bearer token
                     var session = e.Session;
-                    string creator = session?.UserName ?? e.Content["createdBy"]?.GetValue<string>() ?? "anonymous";
+                    if (session == null)
+                    {
+                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Bearer token required to create media."
+                        });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    string creator = session.UserName;
 
                     // read fields
                     string title = e.Content["title"]?.GetValue<string>() ?? string.Empty;
@@ -100,9 +111,40 @@ public sealed class MediaHandler : Handler, IHandler
                 }
                 else if (e.Method == HttpMethod.Put)
                 {
-                    // allow update without token; use session username or provided 'updatedBy' or 'anonymous'
+                    // update - REQUIRE bearer token
                     var session = e.Session;
-                    string updater = session?.UserName ?? e.Content["updatedBy"]?.GetValue<string>() ?? "anonymous";
+                    if (session == null)
+                    {
+                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Bearer token required to update media."
+                        });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    // Check if media exists and user is the creator
+                    var existingEntry = MediaEntry.Get(id);
+                    if (existingEntry == null)
+                    {
+                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Media not found." });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    if (existingEntry.CreatedByUsername != session.UserName)
+                    {
+                        e.Respond(HttpStatusCode.Forbidden, new JsonObject()
+                        {
+                            ["success"] = false,
+                            ["reason"] = "You are not allowed to edit media created by other users."
+                        });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    string updater = session.UserName;
 
                     string title = e.Content["title"]?.GetValue<string>() ?? string.Empty;
                     string description = e.Content["description"]?.GetValue<string>() ?? string.Empty;
@@ -137,9 +179,40 @@ public sealed class MediaHandler : Handler, IHandler
                 }
                 else if (e.Method == HttpMethod.Delete)
                 {
-                    // allow delete without token; use session username or provided 'deletedBy' or 'anonymous'
+                    // delete - REQUIRE bearer token
                     var session = e.Session;
-                    string deletedBy = session?.UserName ?? e.Content["deletedBy"]?.GetValue<string>() ?? "anonymous";
+                    if (session == null)
+                    {
+                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Bearer token required to delete media."
+                        });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    // Check if media exists and user is the creator
+                    var existingEntry = MediaEntry.Get(id);
+                    if (existingEntry == null)
+                    {
+                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Media not found." });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    if (existingEntry.CreatedByUsername != session.UserName)
+                    {
+                        e.Respond(HttpStatusCode.Forbidden, new JsonObject()
+                        {
+                            ["success"] = false,
+                            ["reason"] = "You are not allowed to delete media created by other users."
+                        });
+                        e.Responded = true;
+                        return;
+                    }
+
+                    string deletedBy = session.UserName;
 
                     bool ok = MediaEntry.Delete(id, deletedBy);
                     if (!ok)
