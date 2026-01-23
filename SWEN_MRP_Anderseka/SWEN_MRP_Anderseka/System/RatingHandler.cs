@@ -1,33 +1,37 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using MyMediaList.Server;
+using MyMediaList.Handlers;
 
 namespace MyMediaList.System
 {
     public sealed class RatingHandler : Handler, IHandler
     {
+        private const string RATINGS_BASE = "/ratings";
+        private const string RATINGS_WITH_ID = "/ratings/";
+
         public override void Handle(HttpRestEventArgs e)
         {
-            if (!e.Path.StartsWith("/ratings"))
+            if (!e.Path.StartsWith(RATINGS_BASE))
             {
                 return; // Not for this handler
             }
 
             try
             {
-                if (e.Path == "/ratings" && e.Method == HttpMethod.Post)
+                if (e.Path == RATINGS_BASE && e.Method == HttpMethod.Post)
                 {
                     HandleCreate(e);
                 }
-                else if (e.Method == HttpMethod.Get && e.Path.StartsWith("/ratings/"))
+                else if (e.Method == HttpMethod.Get && e.Path.StartsWith(RATINGS_WITH_ID))
                 {
                     HandleGet(e);
                 }
-                else if (e.Method == HttpMethod.Put && e.Path.StartsWith("/ratings/"))
+                else if (e.Method == HttpMethod.Put && e.Path.StartsWith(RATINGS_WITH_ID))
                 {
                     HandleUpdate(e);
                 }
-                else if (e.Method == HttpMethod.Delete && e.Path.StartsWith("/ratings/"))
+                else if (e.Method == HttpMethod.Delete && e.Path.StartsWith(RATINGS_WITH_ID))
                 {
                     HandleDelete(e);
                 }
@@ -80,11 +84,11 @@ namespace MyMediaList.System
 
         private void HandleGet(HttpRestEventArgs e)
         {
-            string idStr = e.Path.Substring("/ratings/".Length);
+            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
 
             if (!int.TryParse(idStr, out int id))
             {
-                e.Respond(HttpStatusCode.BadRequest, new { success = false, reason = "Invalid rating id." });
+                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
                 return;
             }
 
@@ -92,7 +96,7 @@ namespace MyMediaList.System
 
             if (rating == null)
             {
-                e.Respond(HttpStatusCode.NotFound, new { success = false, reason = "Rating not found." });
+                e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
                 return;
             }
 
@@ -107,18 +111,18 @@ namespace MyMediaList.System
 
         private void HandleUpdate(HttpRestEventArgs e)
         {
-            string idStr = e.Path.Substring("/ratings/".Length);
+            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
 
             if (!int.TryParse(idStr, out int id))
             {
-                e.Respond(HttpStatusCode.BadRequest, new { success = false, reason = "Invalid rating id." });
+                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
                 return;
             }
 
             var rating = Rating.Get(id);
             if (rating == null)
             {
-                e.Respond(HttpStatusCode.NotFound, new { success = false, reason = "Rating not found." });
+                e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
                 return;
             }
 
@@ -129,29 +133,29 @@ namespace MyMediaList.System
 
             rating.Save();
 
-            e.Respond(HttpStatusCode.OK, new { success = true, message = "Rating updated." });
+            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["message"] = "Rating updated." });
         }
 
         private void HandleDelete(HttpRestEventArgs e)
         {
-            string idStr = e.Path.Substring("/ratings/".Length);
+            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
 
             if (!int.TryParse(idStr, out int id))
             {
-                e.Respond(HttpStatusCode.BadRequest, new { success = false, reason = "Invalid rating id." });
+                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
                 return;
             }
 
             var rating = Rating.Get(id);
             if (rating == null)
             {
-                e.Respond(HttpStatusCode.NotFound, new { success = false, reason = "Rating not found." });
+                e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
                 return;
             }
 
             rating.Delete();
 
-            e.Respond(HttpStatusCode.OK, new { success = true, message = "Rating deleted." });
+            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["message"] = "Rating deleted." });
         }
     }
 }
