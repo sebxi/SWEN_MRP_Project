@@ -1,5 +1,6 @@
 ﻿using MyMediaList.Server;
 using MyMediaList.Handlers;
+using Npgsql;
 
 namespace MyMediaList
 {
@@ -7,19 +8,38 @@ namespace MyMediaList
     {
         static void Main(string[] args)
         {
+            TestDatabaseConnection();
+
             using HttpRestServer svr = new();
-            
-            // log incoming requests
+
             svr.RequestReceived += (sender, evt) =>
             {
                 Console.WriteLine($"Incoming request: {evt.Context.Request.HttpMethod} {evt.Context.Request.Url}");
             };
 
-            // route requests to available handlers
             svr.RequestReceived += Handler.HandleEvent;
 
             Console.WriteLine("Starting server on http://localhost:8080");
             svr.Run();
+        }
+
+        static void TestDatabaseConnection()
+        {
+            try
+            {
+                using var conn = Database.GetConnection();
+                conn.Open();
+
+                using var cmd = new NpgsqlCommand("SELECT 1", conn);
+                var result = cmd.ExecuteScalar();
+
+                Console.WriteLine("✅ Database connected successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ Database connection failed:");
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 }
