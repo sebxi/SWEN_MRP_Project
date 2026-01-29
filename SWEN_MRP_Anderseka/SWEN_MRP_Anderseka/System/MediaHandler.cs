@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using MyMediaList.Handlers;
 using MyMediaList.Server;
 
-
 namespace MyMediaList.System;
 
 /// <summary>Handler for media CRUD endpoints under /api/media</summary>
@@ -18,29 +17,29 @@ public sealed class MediaHandler : Handler, IHandler
 
         try
         {
-            // route: /api/media or /api/media/{id}
             string[] parts = e.Path.TrimEnd('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-            // /api/media -> parts = ["api","media"]
+            // /api/media
             if (parts.Length == 2 && parts[0] == "api" && parts[1] == "media")
             {
                 if (e.Method == HttpMethod.Get)
                 {
-                    // list all
                     var arr = new JsonArray();
                     foreach (var me in MediaEntry.GetAll())
-                    {
                         arr.Add(MediaToJson(me));
-                    }
-                    e.Respond(HttpStatusCode.OK, new JsonObject() { ["success"] = true, ["data"] = arr });
+
+                    e.Respond(HttpStatusCode.OK, new JsonObject
+                    {
+                        ["success"] = true,
+                        ["data"] = arr
+                    });
                 }
                 else if (e.Method == HttpMethod.Post)
                 {
-                    // create - REQUIRE bearer token
                     var session = e.Session;
                     if (session == null)
                     {
-                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject
                         {
                             ["success"] = false,
                             ["reason"] = "Bearer token required to create media."
@@ -51,217 +50,162 @@ public sealed class MediaHandler : Handler, IHandler
 
                     string creator = session.UserName;
 
-                    // read fields
                     string title = e.Content["title"]?.GetValue<string>() ?? string.Empty;
                     string description = e.Content["description"]?.GetValue<string>() ?? string.Empty;
                     string typeStr = e.Content["type"]?.GetValue<string>() ?? "Movie";
                     int releaseYear = e.Content["releaseYear"]?.GetValue<int>() ?? 0;
-                    JsonNode? genresNode = e.Content["genres"];
+                    int ageRestriction = e.Content["ageRestriction"]?.GetValue<int>() ?? 0;
+
                     List<string> genres = new();
-                    if (genresNode is JsonArray ja)
+                    if (e.Content["genres"] is JsonArray ja)
                     {
                         foreach (var x in ja)
-                        {
                             if (x != null) genres.Add(x.GetValue<string>() ?? string.Empty);
-                        }
                     }
-                    else if (e.Content["genres"] != null)
+                    else if (!string.IsNullOrWhiteSpace(e.Content["genres"]?.GetValue<string>()))
                     {
-                        // maybe comma separated
-                        string g = e.Content["genres"]?.GetValue<string>() ?? string.Empty;
-                        if (!string.IsNullOrWhiteSpace(g)) genres.AddRange(g.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                        genres.AddRange(e.Content["genres"].GetValue<string>()
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                     }
-                    int ageRestriction = e.Content["ageRestriction"]?.GetValue<int>() ?? 0;
 
                     if (string.IsNullOrWhiteSpace(title))
                     {
-                        e.Respond(HttpStatusCode.BadRequest, new JsonObject() { ["success"] = false, ["reason"] = "Title is required." });
+                        e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Title is required."
+                        });
+                        return;
                     }
-                    else
-                    {
-                        MediaEntry.MediaType type = ParseMediaType(typeStr);
-                        var entry = MediaEntry.Create(creator, title, description, type, releaseYear, genres, ageRestriction);
 
-                        e.Respond(HttpStatusCode.Created, new JsonObject() { ["success"] = true, ["data"] = MediaToJson(entry) });
-                    }
+                    var type = ParseMediaType(typeStr);
+                    var entry = MediaEntry.Create(creator, title, description, type, releaseYear, genres, ageRestriction);
+
+                    e.Respond(HttpStatusCode.Created, new JsonObject
+                    {
+                        ["success"] = true,
+                        ["data"] = MediaToJson(entry)
+                    });
                 }
                 else
                 {
-                    e.Respond(HttpStatusCode.MethodNotAllowed, new JsonObject() { ["success"] = false, ["reason"] = "Method not allowed on collection." });
+                    e.Respond(HttpStatusCode.MethodNotAllowed, new JsonObject
+                    {
+                        ["success"] = false,
+                        ["reason"] = "Method not allowed on collection."
+                    });
                 }
             }
+            // /api/media/{id}
             else if (parts.Length == 3 && parts[0] == "api" && parts[1] == "media")
             {
-                // /api/media/{id}
                 if (!int.TryParse(parts[2], out int id))
                 {
-                    e.Respond(HttpStatusCode.BadRequest, new JsonObject() { ["success"] = false, ["reason"] = "Invalid id." });
+                    e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid id." });
+                    return;
                 }
-                else if (e.Method == HttpMethod.Get)
+
+                if (e.Method == HttpMethod.Get)
                 {
                     var entry = MediaEntry.Get(id);
                     if (entry == null)
-                    {
-                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Not found." });
-                    }
+                        e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Not found." });
                     else
-                    {
-                        e.Respond(HttpStatusCode.OK, new JsonObject() { ["success"] = true, ["data"] = MediaToJson(entry) });
-                    }
+                        e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["data"] = MediaToJson(entry) });
                 }
-                else if (e.Method == HttpMethod.Put)
+                else if (e.Method == HttpMethod.Put || e.Method == HttpMethod.Delete)
                 {
-                    // update - REQUIRE bearer token
                     var session = e.Session;
                     if (session == null)
                     {
-                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject
                         {
                             ["success"] = false,
-                            ["reason"] = "Bearer token required to update media."
+                            ["reason"] = "Bearer token required to modify media."
                         });
                         e.Responded = true;
                         return;
                     }
 
-                    // Check if media exists and user is the creator
-                    var existingEntry = MediaEntry.Get(id);
-                    if (existingEntry == null)
+                    var existing = MediaEntry.Get(id);
+                    if (existing == null)
                     {
-                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Media not found." });
-                        e.Responded = true;
+                        e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Media not found." });
                         return;
                     }
 
-                    if (existingEntry.CreatedByUsername != session.UserName)
+                    if (existing.CreatedByUsername != session.UserName)
                     {
-                        e.Respond(HttpStatusCode.Forbidden, new JsonObject()
-                        {
-                            ["success"] = false,
-                            ["reason"] = "You are not allowed to edit media created by other users."
-                        });
-                        e.Responded = true;
+                        e.Respond(HttpStatusCode.Forbidden, new JsonObject { ["success"] = false, ["reason"] = "You cannot modify media of other users." });
                         return;
                     }
 
-                    string updater = session.UserName;
-
-                    string title = e.Content["title"]?.GetValue<string>() ?? string.Empty;
-                    string description = e.Content["description"]?.GetValue<string>() ?? string.Empty;
-                    string typeStr = e.Content["type"]?.GetValue<string>() ?? "Movie";
-                    int releaseYear = e.Content["releaseYear"]?.GetValue<int>() ?? 0;
-                    JsonNode? genresNode = e.Content["genres"];
-                    List<string> genres = new();
-                    if (genresNode is JsonArray ja)
+                    if (e.Method == HttpMethod.Put)
                     {
-                        foreach (var x in ja)
+                        string title = e.Content["title"]?.GetValue<string>() ?? existing.Title;
+                        string description = e.Content["description"]?.GetValue<string>() ?? existing.Description;
+                        string typeStr = e.Content["type"]?.GetValue<string>() ?? existing.Type.ToString();
+                        int releaseYear = e.Content["releaseYear"]?.GetValue<int>() ?? existing.ReleaseYear;
+                        int ageRestriction = e.Content["ageRestriction"]?.GetValue<int>() ?? existing.AgeRestriction;
+
+                        List<string> genres = new();
+                        if (e.Content["genres"] is JsonArray ja)
                         {
-                            if (x != null) genres.Add(x.GetValue<string>() ?? string.Empty);
+                            foreach (var x in ja) if (x != null) genres.Add(x.GetValue<string>() ?? string.Empty);
                         }
-                    }
-                    else if (e.Content["genres"] != null)
-                    {
-                        string g = e.Content["genres"]?.GetValue<string>() ?? string.Empty;
-                        if (!string.IsNullOrWhiteSpace(g)) genres.AddRange(g.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                    }
-                    int ageRestriction = e.Content["ageRestriction"]?.GetValue<int>() ?? 0;
-
-                    MediaEntry.MediaType type = ParseMediaType(typeStr);
-                    var updated = MediaEntry.Update(id, updater, title, description, type, releaseYear, genres, ageRestriction);
-                    if (updated == null)
-                    {
-                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Not found." });
-                    }
-                    else
-                    {
-                        e.Respond(HttpStatusCode.OK, new JsonObject() { ["success"] = true, ["data"] = MediaToJson(updated) });
-                    }
-                }
-                else if (e.Method == HttpMethod.Delete)
-                {
-                    // delete - REQUIRE bearer token
-                    var session = e.Session;
-                    if (session == null)
-                    {
-                        e.Respond(HttpStatusCode.Unauthorized, new JsonObject()
+                        else if (!string.IsNullOrWhiteSpace(e.Content["genres"]?.GetValue<string>()))
                         {
-                            ["success"] = false,
-                            ["reason"] = "Bearer token required to delete media."
-                        });
-                        e.Responded = true;
-                        return;
-                    }
+                            genres.AddRange(e.Content["genres"].GetValue<string>().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                        }
 
-                    // Check if media exists and user is the creator
-                    var existingEntry = MediaEntry.Get(id);
-                    if (existingEntry == null)
-                    {
-                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Media not found." });
-                        e.Responded = true;
-                        return;
+                        var updated = MediaEntry.Update(id, session.UserName, title, description, ParseMediaType(typeStr), releaseYear, genres, ageRestriction);
+                        e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["data"] = MediaToJson(updated!) });
                     }
-
-                    if (existingEntry.CreatedByUsername != session.UserName)
+                    else // DELETE
                     {
-                        e.Respond(HttpStatusCode.Forbidden, new JsonObject()
-                        {
-                            ["success"] = false,
-                            ["reason"] = "You are not allowed to delete media created by other users."
-                        });
-                        e.Responded = true;
-                        return;
-                    }
-
-                    string deletedBy = session.UserName;
-
-                    bool ok = MediaEntry.Delete(id, deletedBy);
-                    if (!ok)
-                    {
-                        e.Respond(HttpStatusCode.NotFound, new JsonObject() { ["success"] = false, ["reason"] = "Not found." });
-                    }
-                    else
-                    {
-                        e.Respond(HttpStatusCode.OK, new JsonObject() { ["success"] = true });
+                        bool ok = MediaEntry.Delete(id, session.UserName);
+                        e.Respond(ok ? HttpStatusCode.OK : HttpStatusCode.NotFound, new JsonObject { ["success"] = ok });
                     }
                 }
                 else
                 {
-                    e.Respond(HttpStatusCode.MethodNotAllowed, new JsonObject() { ["success"] = false, ["reason"] = "Method not allowed on resource." });
+                    e.Respond(HttpStatusCode.MethodNotAllowed, new JsonObject { ["success"] = false, ["reason"] = "Method not allowed on resource." });
                 }
             }
             else
             {
-                e.Respond(HttpStatusCode.BadRequest, new JsonObject() { ["success"] = false, ["reason"] = "Invalid media endpoint." });
+                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid media endpoint." });
             }
         }
         catch (Exception ex)
         {
-            e.Respond(HttpStatusCode.InternalServerError, new JsonObject() { ["success"] = false, ["reason"] = ex.Message });
+            e.Respond(HttpStatusCode.InternalServerError, new JsonObject { ["success"] = false, ["reason"] = ex.Message });
         }
 
         e.Responded = true;
     }
 
-    private static MediaEntry.MediaType ParseMediaType(string s)
-    {
-        if (Enum.TryParse<MediaEntry.MediaType>(s, true, out var t)) return t;
-        return MediaEntry.MediaType.Movie;
-    }
+    private static MediaEntry.MediaType ParseMediaType(string s) =>
+        Enum.TryParse<MediaEntry.MediaType>(s, true, out var t) ? t : MediaEntry.MediaType.Movie;
 
     private static JsonObject MediaToJson(MediaEntry m)
     {
-        var jo = new JsonObject();
-        jo["id"] = m.Id;
-        jo["title"] = m.Title;
-        jo["description"] = m.Description;
-        jo["type"] = m.Type.ToString();
-        jo["releaseYear"] = m.ReleaseYear;
+        var jo = new JsonObject
+        {
+            ["id"] = m.Id,
+            ["title"] = m.Title,
+            ["description"] = m.Description,
+            ["type"] = m.Type.ToString(),
+            ["releaseYear"] = m.ReleaseYear,
+            ["ageRestriction"] = m.AgeRestriction,
+            ["createdBy"] = m.CreatedByUsername,
+            ["createdAt"] = m.CreatedAt.ToString("o")
+        };
+
         var genres = new JsonArray();
         foreach (var g in m.Genres) genres.Add(g);
         jo["genres"] = genres;
-        jo["ageRestriction"] = m.AgeRestriction;
-        jo["createdBy"] = m.CreatedByUsername;
-        jo["createdAt"] = m.CreatedAt.ToString("o");
+
         return jo;
     }
 }
