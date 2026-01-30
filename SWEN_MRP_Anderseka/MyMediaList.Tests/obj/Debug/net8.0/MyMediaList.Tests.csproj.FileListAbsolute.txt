@@ -1,0 +1,7 @@
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\bin\Debug\net8.0\.msCoverageSourceRootsMapping_MyMediaList.Tests
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.csproj.AssemblyReference.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.AssemblyInfoInputs.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.AssemblyInfo.cs
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.csproj.CoreCompileInputs.cache
+C:\Users\ander\source\repos\SWEN_MRP_Project\SWEN_MRP_Anderseka\MyMediaList.Tests\obj\Debug\net8.0\MyMediaList.Tests.sourcelink.json

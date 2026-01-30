@@ -18,7 +18,6 @@ namespace MyMediaList
             };
 
             svr.RequestReceived += Handler.HandleEvent;
-
             Console.WriteLine("Starting server on http://localhost:8080");
             svr.Run();
         }
