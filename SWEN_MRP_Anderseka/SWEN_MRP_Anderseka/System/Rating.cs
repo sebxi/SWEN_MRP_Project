@@ -1,134 +1,125 @@
-using System.Collections.Generic;
+using System;
+using Npgsql;
+using MyMediaList.Server;
 
 namespace MyMediaList.System
 {
-    public sealed class Rating : Atom, IAtom
+    public sealed class Rating
     {
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // static in-memory store                                                                                    //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        public int Id { get; private set; }
+        public int UserId { get; private set; }
+        public int MediaId { get; private set; }
+        public int Score { get; private set; }
+        public string Comment { get; private set; } = string.Empty;
+        public bool IsConfirmed { get; private set; }
 
-        private static readonly Dictionary<int, Rating> _Ratings = new();
-        private static int _NextId = 1;
+        private Rating() { }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // private fields                                                                                             //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        private bool _New;
-        private int _Id;
-        private string? _UserName = null;
-        private int _MediaId;
-        private int _Value;
-        private string? _Comment = null;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // constructor                                                                                                //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        public Rating(Session? session = null)
+        // -------------------------
+        // CREATE
+        // -------------------------
+        public static Rating Create(int userId, int mediaId, int score, string comment)
         {
-            _EditingSession = session;
-            _New = true;
+            using var conn = Database.GetConnection();
+            conn.Open();
+
+            // one rating per user per media (CODE-handled)
+            using (var check = new NpgsqlCommand(
+                "SELECT rating_id FROM ratings WHERE user_id=@u AND media_id=@m", conn))
+            {
+                check.Parameters.AddWithValue("u", userId);
+                check.Parameters.AddWithValue("m", mediaId);
+                if (check.ExecuteScalar() != null)
+                    throw new Exception("User already rated this media.");
+            }
+
+            using var cmd = new NpgsqlCommand(
+                @"INSERT INTO ratings (user_id, media_id, score, comment)
+                  VALUES (@u,@m,@s,@c)
+                  RETURNING rating_id, is_confirmed", conn);
+
+            cmd.Parameters.AddWithValue("u", userId);
+            cmd.Parameters.AddWithValue("m", mediaId);
+            cmd.Parameters.AddWithValue("s", score);
+            cmd.Parameters.AddWithValue("c", comment ?? string.Empty);
+
+            using var r = cmd.ExecuteReader();
+            r.Read();
+
+            return new Rating
+            {
+                Id = r.GetInt32(0),
+                UserId = userId,
+                MediaId = mediaId,
+                Score = score,
+                Comment = comment ?? string.Empty,
+                IsConfirmed = r.GetBoolean(1)
+            };
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // static helper                                                                                              //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+        // -------------------------
+        // GET
+        // -------------------------
         public static Rating? Get(int id)
         {
-            lock (_Ratings)
+            using var conn = Database.GetConnection();
+            conn.Open();
+
+            using var cmd = new NpgsqlCommand(
+                @"SELECT rating_id, user_id, media_id, score, comment, is_confirmed
+                  FROM ratings WHERE rating_id=@id", conn);
+
+            cmd.Parameters.AddWithValue("id", id);
+            using var r = cmd.ExecuteReader();
+
+            if (!r.Read()) return null;
+
+            return new Rating
             {
-                if (_Ratings.ContainsKey(id))
-                {
-                    return _Ratings[id];
-                }
-            }
-            return null;
+                Id = r.GetInt32(0),
+                UserId = r.GetInt32(1),
+                MediaId = r.GetInt32(2),
+                Score = r.GetInt32(3),
+                Comment = r.GetString(4),
+                IsConfirmed = r.GetBoolean(5)
+            };
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // properties                                                                                                 //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        public int Id => _Id;
-
-        public string UserName
+        // -------------------------
+        // UPDATE
+        // -------------------------
+        public void Update(int score, string comment)
         {
-            get => _UserName ?? string.Empty;
-            set => _UserName = value;
+            using var conn = Database.GetConnection();
+            conn.Open();
+
+            using var cmd = new NpgsqlCommand(
+                @"UPDATE ratings
+                  SET score=@s, comment=@c, is_confirmed=false
+                  WHERE rating_id=@id", conn);
+
+            cmd.Parameters.AddWithValue("s", score);
+            cmd.Parameters.AddWithValue("c", comment ?? string.Empty);
+            cmd.Parameters.AddWithValue("id", Id);
+            cmd.ExecuteNonQuery();
+
+            Score = score;
+            Comment = comment ?? string.Empty;
+            IsConfirmed = false;
         }
 
-        public int MediaId
+        // -------------------------
+        // DELETE
+        // -------------------------
+        public void Delete()
         {
-            get => _MediaId;
-            set => _MediaId = value;
-        }
+            using var conn = Database.GetConnection();
+            conn.Open();
 
-        public int Value
-        {
-            get => _Value;
-            set => _Value = value;
-        }
-
-        public string Comment
-        {
-            get => _Comment ?? string.Empty;
-            set => _Comment = value;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Atom overrides (Save, Delete, Refresh)                                                                     //
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        public override void Save()
-        {
-            lock (_Ratings)
-            {
-                if (_New)
-                {
-                    _Id = _NextId++;
-                    _Ratings[_Id] = this;
-                    _New = false;
-                }
-                else
-                {
-                    _Ratings[_Id] = this;
-                }
-            }
-
-            _EndEdit();
-        }
-
-        public override void Delete()
-        {
-            lock (_Ratings)
-            {
-                if (_Ratings.ContainsKey(_Id))
-                {
-                    _Ratings.Remove(_Id);
-                }
-            }
-
-            _EndEdit();
-        }
-
-        public override void Refresh()
-        {
-            lock (_Ratings)
-            {
-                if (_Ratings.ContainsKey(_Id))
-                {
-                    var r = _Ratings[_Id];
-                    _UserName = r._UserName;
-                    _MediaId = r._MediaId;
-                    _Value = r._Value;
-                    _Comment = r._Comment;
-                }
-            }
-
-            _EndEdit();
+            using var cmd = new NpgsqlCommand(
+                "DELETE FROM ratings WHERE rating_id=@id", conn);
+            cmd.Parameters.AddWithValue("id", Id);
+            cmd.ExecuteNonQuery();
         }
     }
 }

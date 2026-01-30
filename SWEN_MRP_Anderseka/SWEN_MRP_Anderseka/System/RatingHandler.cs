@@ -2,160 +2,221 @@ using System.Net;
 using System.Text.Json.Nodes;
 using MyMediaList.Server;
 using MyMediaList.Handlers;
+using Npgsql;
 
 namespace MyMediaList.System
 {
     public sealed class RatingHandler : Handler, IHandler
     {
-        private const string RATINGS_BASE = "/ratings";
-        private const string RATINGS_WITH_ID = "/ratings/";
+        private const string BASE = "/ratings";
 
         public override void Handle(HttpRestEventArgs e)
         {
-            if (!e.Path.StartsWith(RATINGS_BASE))
+            if (!e.Path.StartsWith(BASE)) return;
+
+            // Session prüfen
+            var session = e.Session;
+            if (session == null)
             {
-                return; // Not for this handler
+                e.Respond(HttpStatusCode.Unauthorized, new JsonObject
+                {
+                    ["success"] = false,
+                    ["reason"] = "Login required."
+                });
+                e.Responded = true;
+                return;
             }
 
             try
             {
-                if (e.Path == RATINGS_BASE && e.Method == HttpMethod.Post)
+                string[] parts = e.Path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+                // POST /ratings
+                if (e.Method == HttpMethod.Post && e.Path == BASE)
                 {
-                    HandleCreate(e);
+                    Create(e, session);
                 }
-                else if (e.Method == HttpMethod.Get && e.Path.StartsWith(RATINGS_WITH_ID))
+                // GET /ratings/{id}
+                else if (e.Method == HttpMethod.Get && parts.Length == 2)
                 {
-                    HandleGet(e);
+                    if (!int.TryParse(parts[1], out int id))
+                    {
+                        e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Invalid rating id."
+                        });
+                    }
+                    else
+                    {
+                        Get(e, id);
+                    }
                 }
-                else if (e.Method == HttpMethod.Put && e.Path.StartsWith(RATINGS_WITH_ID))
+                // PUT /ratings/{id}
+                else if (e.Method == HttpMethod.Put && parts.Length == 2)
                 {
-                    HandleUpdate(e);
+                    if (!int.TryParse(parts[1], out int id))
+                    {
+                        e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Invalid rating id."
+                        });
+                    }
+                    else
+                    {
+                        Update(e, session, id);
+                    }
                 }
-                else if (e.Method == HttpMethod.Delete && e.Path.StartsWith(RATINGS_WITH_ID))
+                // DELETE /ratings/{id}
+                else if (e.Method == HttpMethod.Delete && parts.Length == 2)
                 {
-                    HandleDelete(e);
+                    if (!int.TryParse(parts[1], out int id))
+                    {
+                        e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                        {
+                            ["success"] = false,
+                            ["reason"] = "Invalid rating id."
+                        });
+                    }
+                    else
+                    {
+                        Delete(e, session, id);
+                    }
                 }
                 else
                 {
-                    e.Respond(HttpStatusCode.BadRequest, new JsonObject {
+                    e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                    {
                         ["success"] = false,
-                        ["reason"] = "Invalid ratings endpoint."
+                        ["reason"] = "Invalid endpoint or method."
                     });
-
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"[{nameof(RatingHandler)}] Invalid endpoint.");
                 }
             }
             catch (Exception ex)
             {
-                e.Respond(HttpStatusCode.InternalServerError, new JsonObject {
+                e.Respond(HttpStatusCode.BadRequest, new JsonObject
+                {
                     ["success"] = false,
                     ["reason"] = ex.Message
                 });
-
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[{nameof(RatingHandler)}] Exception: {ex.Message}");
             }
 
             e.Responded = true;
         }
 
-        private void HandleCreate(HttpRestEventArgs e)
+        // --------------------------
+        // Helper: Get user id safely
+        // --------------------------
+        private static int GetUserId(string username)
         {
-            Rating rating = new()
+            using var conn = Database.GetConnection();
+            conn.Open();
+
+            using var cmd = new NpgsqlCommand("SELECT user_id FROM users WHERE username=@u", conn);
+            cmd.Parameters.AddWithValue("u", username);
+
+            object? result = cmd.ExecuteScalar();
+            if (result == null)
+                throw new Exception("User not found");
+
+            return Convert.ToInt32(result);
+        }
+
+        // --------------------------
+        // Create
+        // --------------------------
+        private void Create(HttpRestEventArgs e, Session session)
+        {
+            int userId = GetUserId(session.UserName);
+
+            var rating = Rating.Create(
+                userId,
+                e.Content["mediaId"]!.GetValue<int>(),
+                e.Content["score"]!.GetValue<int>(),
+                e.Content["comment"]?.GetValue<string>() ?? ""
+            );
+
+            e.Respond(HttpStatusCode.OK, new JsonObject
             {
-                UserName = e.Content?["username"]?.GetValue<string>() ?? string.Empty,
-                MediaId = e.Content?["mediaId"]?.GetValue<int>() ?? 0,
-                Value = e.Content?["value"]?.GetValue<int>() ?? 0,
-                Comment = e.Content?["comment"]?.GetValue<string>() ?? string.Empty
-            };
-
-            rating.Save();
-
-            e.Respond(HttpStatusCode.OK, new JsonObject {
                 ["success"] = true,
-                ["message"] = "Rating created.",
                 ["id"] = rating.Id
             });
-
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine($"[{nameof(RatingHandler)}] Created rating {rating.Id}.");
         }
 
-        private void HandleGet(HttpRestEventArgs e)
+        // --------------------------
+        // Get
+        // --------------------------
+        private void Get(HttpRestEventArgs e, int id)
         {
-            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
-
-            if (!int.TryParse(idStr, out int id))
+            var r = Rating.Get(id);
+            if (r == null)
             {
-                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
+                e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false });
                 return;
             }
 
-            var rating = Rating.Get(id);
+            var json = new JsonObject
+            {
+                ["id"] = r.Id,
+                ["mediaId"] = r.MediaId,
+                ["score"] = r.Score
+            };
 
-            if (rating == null)
+            if (r.IsConfirmed)
+                json["comment"] = r.Comment;
+
+            e.Respond(HttpStatusCode.OK, json);
+        }
+
+        // --------------------------
+        // Update
+        // --------------------------
+        private void Update(HttpRestEventArgs e, Session session, int id)
+        {
+            var r = Rating.Get(id);
+            if (r == null)
             {
                 e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
                 return;
             }
 
-            e.Respond(HttpStatusCode.OK, new JsonObject {
-                ["id"] = rating.Id,
-                ["username"] = rating.UserName,
-                ["mediaId"] = rating.MediaId,
-                ["value"] = rating.Value,
-                ["comment"] = rating.Comment
-            });
-        }
-
-        private void HandleUpdate(HttpRestEventArgs e)
-        {
-            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
-
-            if (!int.TryParse(idStr, out int id))
+            int userId = GetUserId(session.UserName);
+            if (r.UserId != userId)
             {
-                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
+                e.Respond(HttpStatusCode.Forbidden, new JsonObject { ["success"] = false, ["reason"] = "Not your rating." });
                 return;
             }
 
-            var rating = Rating.Get(id);
-            if (rating == null)
+            r.Update(
+                e.Content["score"]!.GetValue<int>(),
+                e.Content["comment"]?.GetValue<string>() ?? ""
+            );
+
+            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true });
+        }
+
+        // --------------------------
+        // Delete
+        // --------------------------
+        private void Delete(HttpRestEventArgs e, Session session, int id)
+        {
+            var r = Rating.Get(id);
+            if (r == null)
             {
                 e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
                 return;
             }
 
-            rating.UserName = e.Content?["username"]?.GetValue<string>() ?? rating.UserName;
-            rating.MediaId = e.Content?["mediaId"]?.GetValue<int>() ?? rating.MediaId;
-            rating.Value = e.Content?["value"]?.GetValue<int>() ?? rating.Value;
-            rating.Comment = e.Content?["comment"]?.GetValue<string>() ?? rating.Comment;
-
-            rating.Save();
-
-            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["message"] = "Rating updated." });
-        }
-
-        private void HandleDelete(HttpRestEventArgs e)
-        {
-            string idStr = e.Path.Substring(RATINGS_WITH_ID.Length);
-
-            if (!int.TryParse(idStr, out int id))
+            int userId = GetUserId(session.UserName);
+            if (r.UserId != userId)
             {
-                e.Respond(HttpStatusCode.BadRequest, new JsonObject { ["success"] = false, ["reason"] = "Invalid rating id." });
+                e.Respond(HttpStatusCode.Forbidden, new JsonObject { ["success"] = false, ["reason"] = "Not your rating." });
                 return;
             }
 
-            var rating = Rating.Get(id);
-            if (rating == null)
-            {
-                e.Respond(HttpStatusCode.NotFound, new JsonObject { ["success"] = false, ["reason"] = "Rating not found." });
-                return;
-            }
-
-            rating.Delete();
-
-            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true, ["message"] = "Rating deleted." });
+            r.Delete();
+            e.Respond(HttpStatusCode.OK, new JsonObject { ["success"] = true });
         }
     }
 }
